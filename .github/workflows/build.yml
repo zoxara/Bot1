@@ -44,21 +44,56 @@ jobs:
             cd "$FIRST_DIR"
           fi
 
-          # Clean and setup clean android project structure
+          # Clean and recreate fresh android project structure
           rm -rf android
           mkdir -p android/app/src/main/assets
           mkdir -p android/app/src/main/java/com/mql5/eastudio
-          mkdir -p android/gradle/wrapper
 
+          # Write simple and direct settings.gradle
           echo "rootProject.name='MQL5EAStudio'" > android/settings.gradle
           echo "include ':app'" >> android/settings.gradle
 
-          echo "buildscript { repositories { google(); mavenCentral() } dependencies { classpath 'com.android.tools.build:gradle:8.1.1' } }" > android/build.gradle
-          echo "allprojects { repositories { google(); mavenCentral() } }" >> android/build.gradle
+          # Write standard root build.gradle compatible with Gradle CLI
+          cat << 'EOF' > android/build.gradle
+          plugins {
+              id 'com.android.application' version '8.1.1' apply false
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
 
-          echo "plugins { id 'com.android.application' }" > android/app/build.gradle
-          echo "android { namespace 'com.mql5.eastudio'; compileSdk 34; defaultConfig { applicationId 'com.mql5.eastudio'; minSdk 21; targetSdk 34; versionCode 1; versionName '1.0' } }" >> android/app/build.gradle
+          # Write app/build.gradle
+          cat << 'EOF' > android/app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.mql5.eastudio'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.mql5.eastudio'
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.9.0'
+          }
+          EOF
 
+          # Copy web assets
           if [ -d "www" ]; then
             cp -r www/* android/app/src/main/assets/ 2>/dev/null || true
           elif [ -d "src" ]; then
@@ -68,17 +103,9 @@ jobs:
           fi
 
           cd android
-          echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
-          echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
-          echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
-          echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-
-          # Create a working gradlew bash script explicitly
-          printf '#!/usr/bin/env sh\nexec gradle "$@"\n' > gradlew
-          chmod +x gradlew
           
-          ./gradlew clean assembleDebug --stacktrace
+          # Build directly using system gradle to bypass wrapper issues completely
+          gradle clean assembleDebug --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
