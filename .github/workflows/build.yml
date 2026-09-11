@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 18
 
-      - name: Extract, Setup & Build APK
+      - name: Extract, Setup & Build APK via Cordova
         run: |
           echo "Checking for zip files..."
           UNZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
@@ -44,57 +44,36 @@ jobs:
             cd "$FIRST_DIR"
           fi
 
-          rm -rf android node_modules package-lock.json
+          rm -rf platforms plugins node_modules package-lock.json
 
           if [ ! -f "package.json" ]; then
             npm init -y
           fi
 
-          # Ensure a valid www folder with index.html exists before capacitor setup
+          # Install Cordova globally and locally
+          npm install -g cordova
+          npm install cordova --save --legacy-peer-deps || true
+
+          # Set up a clean Cordova project structure if config.xml is missing
+          if [ ! -f "config.xml" ]; then
+            cordova create . com.mql5.eastudio MQL5EAStudio || true
+          fi
+
+          # Ensure www folder and index.html exist
           mkdir -p www
           if [ -d "src" ] && [ "$(ls -A src)" ]; then
             cp -r src/* www/ 2>/dev/null || true
+          elif [ -d "public" ] && [ "$(ls -A public)" ]; then
+            cp -r public/* www/ 2>/dev/null || true
           fi
-          
+
           if [ ! -f "www/index.html" ]; then
             echo '<!DOCTYPE html><html><head><title>MQL5 EA Studio</title></head><body><h1>MQL5 EA Studio App</h1></body></html>' > www/index.html
           fi
 
-          npm install @capacitor/core @capacitor/cli --save --legacy-peer-deps || true
-          npm install @capacitor/android --save --legacy-peer-deps || true
-          npm install --legacy-peer-deps || npm install || true
-
-          # Force correct capacitor config pointing to www
-          echo '{
-            "appId": "com.mql5.eastudio",
-            "appName": "MQL5 EA Studio",
-            "webDir": "www",
-            "bundledWebRuntime": false
-          }' > capacitor.config.json
-
-          npx cap add android
-          npx cap sync android || true
-
-          if [ -d "android" ]; then
-            cd android
-            
-            if [ -f "build.gradle" ]; then
-              sed -i "s/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.1.1'/g" build.gradle || true
-            fi
-
-            mkdir -p gradle/wrapper
-            echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
-            echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
-            echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
-            echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-
-            chmod +x gradlew || true
-            ./gradlew clean assembleDebug --stacktrace
-          else
-            echo "Error: Android folder could not be created!"
-            exit 1
-          fi
+          # Add android platform and build debug APK directly
+          cordova platform add android --nosave || true
+          cordova build android --debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -102,5 +81,4 @@ jobs:
           name: mql5-ea-studio-apk
           path: |
             **/build/outputs/apk/debug/*.apk
-            **/android/app/build/outputs/apk/debug/*.apk
-            
+            **/*.apk
