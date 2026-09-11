@@ -66,6 +66,7 @@ jobs:
             echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > www/index.html
           fi
 
+          # Clean and force create fresh capacitor android platform
           rm -rf android
           npx cap add android
           npx cap sync android || true
@@ -73,9 +74,13 @@ jobs:
           if [ -d "android" ]; then
             cd android
             
-            # Fix gradle wrapper for Java 17 compatibility
-            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip" > gradle/wrapper/gradle-wrapper.properties
-            
+            # Completely fix gradle wrapper properties for modern Java/Gradle compatibility
+            echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
+            echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
+            echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
+            echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+
             chmod +x gradlew || true
             ./gradlew clean assembleDebug --stacktrace
           else
