@@ -44,6 +44,9 @@ jobs:
             cd "$FIRST_DIR"
           fi
 
+          # Completely remove old conflicting android or build cache folders from user zip
+          rm -rf android node_modules package-lock.json
+
           if [ ! -f "package.json" ]; then
             npm init -y
           fi
@@ -66,18 +69,18 @@ jobs:
             echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > www/index.html
           fi
 
-          # Clean and force create fresh capacitor android platform
-          rm -rf android
+          # Generate fresh Android platform using the installed CLI
           npx cap add android
           npx cap sync android || true
 
           if [ -d "android" ]; then
             cd android
             
-            # Completely fix gradle wrapper properties for modern Java/Gradle compatibility
+            # Force Gradle wrapper version to 8.5 for stable Java 17 builds
+            mkdir -p gradle/wrapper
             echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
             echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
+            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
             echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
             echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
 
