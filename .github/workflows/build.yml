@@ -44,68 +44,57 @@ jobs:
             cd "$FIRST_DIR"
           fi
 
-          # Clean and recreate fresh android project structure
-          rm -rf android
-          mkdir -p android/app/src/main/assets
-          mkdir -p android/app/src/main/java/com/mql5/eastudio
+          rm -rf android node_modules package-lock.json
 
-          # Write simple and direct settings.gradle
-          echo "rootProject.name='MQL5EAStudio'" > android/settings.gradle
-          echo "include ':app'" >> android/settings.gradle
-
-          # Write standard root build.gradle compatible with Gradle CLI
-          cat << 'EOF' > android/build.gradle
-          plugins {
-              id 'com.android.application' version '8.1.1' apply false
-          }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          EOF
-
-          # Write app/build.gradle
-          cat << 'EOF' > android/app/build.gradle
-          plugins {
-              id 'com.android.application'
-          }
-          android {
-              namespace 'com.mql5.eastudio'
-              compileSdk 34
-              defaultConfig {
-                  applicationId 'com.mql5.eastudio'
-                  minSdk 21
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
-              }
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
-          }
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.9.0'
-          }
-          EOF
-
-          # Copy web assets
-          if [ -d "www" ]; then
-            cp -r www/* android/app/src/main/assets/ 2>/dev/null || true
-          elif [ -d "src" ]; then
-            cp -r src/* android/app/src/main/assets/ 2>/dev/null || true
-          else
-            echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > android/app/src/main/assets/index.html
+          if [ ! -f "package.json" ]; then
+            npm init -y
           fi
 
-          cd android
-          
-          # Build directly using system gradle to bypass wrapper issues completely
-          gradle clean assembleDebug --stacktrace
+          npm install @capacitor/core @capacitor/cli --save --legacy-peer-deps || true
+          npm install @capacitor/android --save --legacy-peer-deps || true
+          npm install --legacy-peer-deps || npm install || true
+
+          if [ ! -f "capacitor.config.json" ] && [ ! -f "capacitor.config.ts" ]; then
+            echo '{
+              "appId": "com.mql5.eastudio",
+              "appName": "MQL5 EA Studio",
+              "webDir": "www",
+              "bundledWebRuntime": false
+            }' > capacitor.config.json
+          fi
+
+          if [ ! -d "www" ] && [ ! -d "src" ]; then
+            mkdir -p www
+            echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > www/index.html
+          elif [ -d "src" ] && [ ! -d "www" ]; then
+            mkdir -p www
+            cp -r src/* www/ 2>/dev/null || true
+          fi
+
+          npx cap add android
+          npx cap sync android || true
+
+          if [ -d "android" ]; then
+            cd android
+            
+            # Fix build.gradle tools version to be compatible with Java 17
+            if [ -f "build.gradle" ]; then
+              sed -i "s/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.1.1'/g" build.gradle || true
+            fi
+
+            mkdir -p gradle/wrapper
+            echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
+            echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
+            echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
+            echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+
+            chmod +x gradlew || true
+            ./gradlew clean assembleDebug --stacktrace
+          else
+            echo "Error: Android folder could not be created!"
+            exit 1
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
