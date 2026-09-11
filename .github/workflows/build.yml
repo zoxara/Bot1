@@ -44,85 +44,40 @@ jobs:
             cd "$FIRST_DIR"
           fi
 
-          # If project has a valid android folder from gradle tool, let's use it directly or fix it
-          if [ -d "android" ]; then
-            cd android
-            echo "Found existing android directory..."
+          # Clean old builds and setup a fresh Android project
+          rm -rf android
+          mkdir -p android/app/src/main/assets
+          mkdir -p android/app/src/main/java/com/mql5/eastudio
+          mkdir -p android/gradle/wrapper
+
+          echo "rootProject.name='MQL5EAStudio'" > settings.gradle
+          echo "include ':app'" >> settings.gradle
+
+          echo "buildscript { repositories { google(); mavenCentral() } dependencies { classpath 'com.android.tools.build:gradle:8.1.1' } }" > build.gradle
+          echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
+
+          echo "plugins { id 'com.android.application' }" > app/build.gradle
+          echo "android { namespace 'com.mql5.eastudio'; compileSdk 34; defaultConfig { applicationId 'com.mql5.eastudio'; minSdk 21; targetSdk 34; versionCode 1; versionName '1.0' } }" >> app/build.gradle
+
+          if [ -d "www" ]; then
+            cp -r www/* app/src/main/assets/ 2>/dev/null || true
+          elif [ -d "src" ]; then
+            cp -r src/* app/src/main/assets/ 2>/dev/null || true
           else
-            echo "Generating a clean standalone Android project structure..."
-            mkdir -p android/app/src/main/assets
-            mkdir -p android/app/src/main/java/com/mql5/eastudio
-            mkdir -p android/gradle/wrapper
-
-            # Create basic gradle files to ensure 100% success build
-            echo "include ':app'" > settings.gradle
-            
-            echo "rootProject.name='MQL5EAStudio'
-            include ':app'" > settings.gradle
-
-            echo "buildscript {
-                repositories {
-                    google()
-                    mavenCentral()
-                }
-                dependencies {
-                    classpath 'com.android.tools.build:gradle:8.1.1'
-                }
-            }
-            allprojects {
-                repositories {
-                    google()
-                    mavenCentral()
-                }
-            }" > build.gradle
-
-            echo "plugins {
-                id 'com.android.application'
-            }
-            android {
-                namespace 'com.mql5.eastudio'
-                compileSdk 34
-                defaultConfig {
-                    applicationId 'com.mql5.eastudio'
-                    minSdk 21
-                    targetSdk 34
-                    versionCode 1
-                    versionName '1.0'
-                }
-            }" > app/build.gradle
-
-            # Copy web assets if available
-            if [ -d "../www" ]; then
-              cp -r ../www/* app/src/main/assets/ 2>/dev/null || true
-            elif [ -d "../src" ]; then
-              cp -r ../src/* app/src/main/assets/ 2>/dev/null || true
-            else
-              echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > app/src/main/assets/index.html
-            fi
-
-            # Gradle wrapper properties
-            echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
-            echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
-            echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
-            echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
-
-            # Gradlew script generation
-            cat << 'EOF' > gradlew
-#!/usr/bin/env sh
-exec gradle "$@"
-EOF
-            chmod +x gradlew
-            cd android
+            echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > app/src/main/assets/index.html
           fi
 
-          # Fix wrapper if missing
-          if [ ! -f "gradle/wrapper/gradle-wrapper.properties" ]; then
-            mkdir -p gradle/wrapper
-            echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip" > gradle/wrapper/gradle-wrapper.properties
-          fi
+          cd android
+          echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
+          echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
+          echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
+          echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
 
-          chmod +x gradlew || true
+          echo '#!/usr/bin/env sh' > gradlew
+          echo 'exec gradle "$@"' >> gradlew
+          chmod +x gradlew
+          
           ./gradlew clean assembleDebug --stacktrace
 
       - name: Upload APK Artifact
@@ -132,4 +87,3 @@ EOF
           path: |
             **/build/outputs/apk/debug/*.apk
             **/android/app/build/outputs/apk/debug/*.apk
-            
