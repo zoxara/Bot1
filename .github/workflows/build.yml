@@ -44,27 +44,27 @@ jobs:
             cd "$FIRST_DIR"
           fi
 
-          # Clean old builds and setup a fresh Android project
+          # Clean old builds and setup a fresh Android project with correct directories
           rm -rf android
           mkdir -p android/app/src/main/assets
           mkdir -p android/app/src/main/java/com/mql5/eastudio
           mkdir -p android/gradle/wrapper
 
-          echo "rootProject.name='MQL5EAStudio'" > settings.gradle
-          echo "include ':app'" >> settings.gradle
+          echo "rootProject.name='MQL5EAStudio'" > android/settings.gradle
+          echo "include ':app'" >> android/settings.gradle
 
-          echo "buildscript { repositories { google(); mavenCentral() } dependencies { classpath 'com.android.tools.build:gradle:8.1.1' } }" > build.gradle
-          echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
+          echo "buildscript { repositories { google(); mavenCentral() } dependencies { classpath 'com.android.tools.build:gradle:8.1.1' } }" > android/build.gradle
+          echo "allprojects { repositories { google(); mavenCentral() } }" >> android/build.gradle
 
-          echo "plugins { id 'com.android.application' }" > app/build.gradle
-          echo "android { namespace 'com.mql5.eastudio'; compileSdk 34; defaultConfig { applicationId 'com.mql5.eastudio'; minSdk 21; targetSdk 34; versionCode 1; versionName '1.0' } }" >> app/build.gradle
+          echo "plugins { id 'com.android.application' }" > android/app/build.gradle
+          echo "android { namespace 'com.mql5.eastudio'; compileSdk 34; defaultConfig { applicationId 'com.mql5.eastudio'; minSdk 21; targetSdk 34; versionCode 1; versionName '1.0' } }" >> android/app/build.gradle
 
           if [ -d "www" ]; then
-            cp -r www/* app/src/main/assets/ 2>/dev/null || true
+            cp -r www/* android/app/src/main/assets/ 2>/dev/null || true
           elif [ -d "src" ]; then
-            cp -r src/* app/src/main/assets/ 2>/dev/null || true
+            cp -r src/* android/app/src/main/assets/ 2>/dev/null || true
           else
-            echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > app/src/main/assets/index.html
+            echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > android/app/src/main/assets/index.html
           fi
 
           cd android
