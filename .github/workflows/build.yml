@@ -28,50 +28,36 @@ jobs:
           echo "Checking for zip files..."
           UNZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
           
-          mkdir -p app_source
+          mkdir -p raw_source
           if [ -n "$UNZIP_FILE" ]; then
             echo "Extracting $UNZIP_FILE..."
-            unzip -q "$UNZIP_FILE" -d app_source
+            unzip -q "$UNZIP_FILE" -d raw_source
           else
             echo "No zip found, copying files..."
-            cp -r * app_source/ 2>/dev/null || true
+            cp -r * raw_source/ 2>/dev/null || true
           fi
 
-          cd app_source
-          
-          FIRST_DIR=$(ls -d */ 2>/dev/null | grep -v 'node_modules/' | head -n 1)
-          if [ -n "$FIRST_DIR" ] && [ "$FIRST_DIR" != "app_source/" ]; then
-            cd "$FIRST_DIR"
+          # Create a fresh, dedicated cordova workspace
+          npx cordova create my-app com.mql5.eastudio MQL5EAStudio
+          cd my-app
+
+          # Find and copy web assets from raw_source into cordova's www folder
+          if [ -d "../raw_source" ]; then
+            # Check if there's a nested folder or direct web files
+            FIRST_DIR=$(ls -d ../raw_source/*/ 2>/dev/null | grep -v 'node_modules/' | head -n 1)
+            if [ -n "$FIRST_DIR" ]; then
+              cp -r "$FIRST_DIR"* www/ 2>/dev/null || true
+            else
+              cp -r ../raw_source/* www/ 2>/dev/null || true
+            fi
           fi
 
-          rm -rf platforms plugins node_modules package-lock.json
-
-          if [ ! -f "package.json" ]; then
-            npm init -y
-          fi
-
-          # Install Cordova globally and locally
-          npm install -g cordova
-          npm install cordova --save --legacy-peer-deps || true
-
-          # Set up a clean Cordova project structure if config.xml is missing
-          if [ ! -f "config.xml" ]; then
-            cordova create . com.mql5.eastudio MQL5EAStudio || true
-          fi
-
-          # Ensure www folder and index.html exist
-          mkdir -p www
-          if [ -d "src" ] && [ "$(ls -A src)" ]; then
-            cp -r src/* www/ 2>/dev/null || true
-          elif [ -d "public" ] && [ "$(ls -A public)" ]; then
-            cp -r public/* www/ 2>/dev/null || true
-          fi
-
+          # Ensure index.html exists
           if [ ! -f "www/index.html" ]; then
             echo '<!DOCTYPE html><html><head><title>MQL5 EA Studio</title></head><body><h1>MQL5 EA Studio App</h1></body></html>' > www/index.html
           fi
 
-          # Add android platform and build debug APK directly
+          # Install android platform and build debug APK
           cordova platform add android --nosave || true
           cordova build android --debug
 
