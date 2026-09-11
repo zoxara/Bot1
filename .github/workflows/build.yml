@@ -90,6 +90,3 @@ jobs:
           path: |
             **/build/outputs/apk/debug/*.apk
             **/android/app/build/outputs/apk/debug/*.apk
-          path: |
-            **/build/outputs/apk/debug/*.apk
-            **/android/app/build/outputs/apk/debug/*.apk
