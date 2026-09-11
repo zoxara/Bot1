@@ -50,26 +50,27 @@ jobs:
             npm init -y
           fi
 
+          # Ensure a valid www folder with index.html exists before capacitor setup
+          mkdir -p www
+          if [ -d "src" ] && [ "$(ls -A src)" ]; then
+            cp -r src/* www/ 2>/dev/null || true
+          fi
+          
+          if [ ! -f "www/index.html" ]; then
+            echo '<!DOCTYPE html><html><head><title>MQL5 EA Studio</title></head><body><h1>MQL5 EA Studio App</h1></body></html>' > www/index.html
+          fi
+
           npm install @capacitor/core @capacitor/cli --save --legacy-peer-deps || true
           npm install @capacitor/android --save --legacy-peer-deps || true
           npm install --legacy-peer-deps || npm install || true
 
-          if [ ! -f "capacitor.config.json" ] && [ ! -f "capacitor.config.ts" ]; then
-            echo '{
-              "appId": "com.mql5.eastudio",
-              "appName": "MQL5 EA Studio",
-              "webDir": "www",
-              "bundledWebRuntime": false
-            }' > capacitor.config.json
-          fi
-
-          if [ ! -d "www" ] && [ ! -d "src" ]; then
-            mkdir -p www
-            echo "<html><body><h1>MQL5 EA Studio</h1></body></html>" > www/index.html
-          elif [ -d "src" ] && [ ! -d "www" ]; then
-            mkdir -p www
-            cp -r src/* www/ 2>/dev/null || true
-          fi
+          # Force correct capacitor config pointing to www
+          echo '{
+            "appId": "com.mql5.eastudio",
+            "appName": "MQL5 EA Studio",
+            "webDir": "www",
+            "bundledWebRuntime": false
+          }' > capacitor.config.json
 
           npx cap add android
           npx cap sync android || true
@@ -77,7 +78,6 @@ jobs:
           if [ -d "android" ]; then
             cd android
             
-            # Fix build.gradle tools version to be compatible with Java 17
             if [ -f "build.gradle" ]; then
               sed -i "s/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.1.1'/g" build.gradle || true
             fi
@@ -103,3 +103,4 @@ jobs:
           path: |
             **/build/outputs/apk/debug/*.apk
             **/android/app/build/outputs/apk/debug/*.apk
+            
