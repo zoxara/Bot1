@@ -37,13 +37,15 @@ jobs:
             cp -r * raw_source/ 2>/dev/null || true
           fi
 
-          # Create a fresh, dedicated cordova workspace
+          # Install Cordova locally
+          npm install cordova --save-dev --legacy-peer-deps || true
+
+          # Create a fresh, dedicated cordova workspace using npx
           npx cordova create my-app com.mql5.eastudio MQL5EAStudio
           cd my-app
 
           # Find and copy web assets from raw_source into cordova's www folder
           if [ -d "../raw_source" ]; then
-            # Check if there's a nested folder or direct web files
             FIRST_DIR=$(ls -d ../raw_source/*/ 2>/dev/null | grep -v 'node_modules/' | head -n 1)
             if [ -n "$FIRST_DIR" ]; then
               cp -r "$FIRST_DIR"* www/ 2>/dev/null || true
@@ -57,9 +59,9 @@ jobs:
             echo '<!DOCTYPE html><html><head><title>MQL5 EA Studio</title></head><body><h1>MQL5 EA Studio App</h1></body></html>' > www/index.html
           fi
 
-          # Install android platform and build debug APK
-          cordova platform add android --nosave || true
-          cordova build android --debug
+          # Add android platform and build debug APK using npx
+          npx cordova platform add android --nosave || true
+          npx cordova build android --debug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
